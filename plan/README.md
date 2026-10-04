@@ -8,7 +8,7 @@ Este documento apresenta a arquitetura, visão de produto e estrutura de projeto
 
 ![Dashboard Preview](assets/dashboard_preview.jpg)
 
-O painel em Angular permitirá monitorar em tempo real as pipelines ativas, visualizar métricas de repositórios, conferir o status dos runners conectados e acompanhar a transmissão ao vivo de logs via WebSockets / SignalR.
+O painel em Angular permitirá monitorar em tempo real as pipelines ativas, visualizar métricas de repositórios, conferir o status dos runners conectados e acompanhar a transmissão ao vivo de logs via WebSockets / SignalR. Além de gerir as configurações, build e deploy das pipes.
 
 ---
 
@@ -20,39 +20,39 @@ A solução será dividida em camadas modulares para facilitar manutenção, esc
 MyCiCdEngine/
 ├── src/
 │   ├── Core/
-│   │   ├── MyCiCd.Domain/            # Entidades (Pipeline, Job, Step, Build, Runner)
-│   │   └── MyCiCd.Application/       # Casos de uso, interfaces, DTOs e orquestração
+│   │   ├── Nebula.Domain/            # Entidades (Pipeline, Job, Step, Build, Runner)
+│   │   └── Nebula.Application/       # Casos de uso, interfaces, DTOs e orquestração
 │   ├── Infrastructure/
-│   │   ├── MyCiCd.Infrastructure/    # Banco de dados (EF Core), Docker SDK, Webhooks
-│   │   └── MyCiCd.Realtime/          # Hubs do SignalR para streaming de logs
+│   │   ├── Nebula.Infrastructure/    # Banco de dados (EF Core), Docker SDK, Webhooks
+│   │   └── Nebula.Realtime/          # Hubs do SignalR para streaming de logs
 │   ├── Presentation/
-│   │   ├── MyCiCd.Api/               # Control Plane (ASP.NET Core Web API)
-│   │   └── MyCiCd.Cli/               # CLI em .NET (System.CommandLine / Spectre.Console)
+│   │   ├── Nebula.Api/               # Control Plane (ASP.NET Core Web API)
+│   │   └── Nebula.Cli/               # CLI em .NET (System.CommandLine / Spectre.Console)
 │   └── Workers/
-│       └── MyCiCd.Runner/            # Agente executor de builds (Background Service / Worker)
+│       └── Nebula.Runner/            # Agente executor de builds (Background Service)
 └── web/
-    └── my-cicd-ui/                   # Painel de Controle em Angular
+    └── nebula-ui/                   # Painel de Controle em Angular
 ```
 
 ### Detalhamento dos Componentes:
 
-1. **`MyCiCd.Api` (Control Plane - Web API ASP.NET Core):**
+1. **`Nebula.Api` (Control Plane - Web API ASP.NET Core):**
    * Recebe Webhooks do GitHub/GitLab ou chamadas da CLI.
    * Gerencia autenticação, usuários, permissões e segredos/variáveis de ambiente.
    * Expõe endpoints REST para o frontend em Angular e para a CLI.
 
-2. **`MyCiCd.Cli` (Ferramenta CLI em .NET):**
+2. **`Nebula.Cli` (Ferramenta CLI em .NET):**
    * Desenvolvida com `Spectre.Console` e `System.CommandLine`.
-   * Permite interagir com a plataforma via terminal (`myci login`, `myci pipeline run`, `myci logs`).
+   * Permite interagir com a plataforma via terminal (`nebula login`, `nebula pipeline run`, `nebula logs`).
 
-3. **`MyCiCd.Runner` (Agente Worker em .NET):**
+3. **`Nebula.Runner` (Agente Worker em .NET):**
    * Aplicação `.NET Worker Service` executada na máquina servidora ou remota.
    * Conecta à API para receber tarefas e utiliza a biblioteca `Docker.DotNet` para subir containers efêmeros e capturar a execução de tarefas.
 
-4. **`MyCiCd.Realtime` (SignalR Hub):**
+4. **`Nebula.Realtime` (SignalR Hub):**
    * Transmite logs de execução do Runner para a API e em tempo real para a CLI e o Dashboard Angular.
 
-5. **`my-cicd-ui` (Painel Angular):**
+5. **`nebula-ui` (Painel Angular):**
    * Interface rica usando Angular com RxJS e SignalR Client para reatividade em tempo real.
 
 ---
@@ -61,21 +61,21 @@ MyCiCdEngine/
 
 ```
 +------------------+         +--------------------+         +-------------------+
-|  GitHub/GitLab   |         |    MyCiCd.Cli      |         |  Dashboard Angular|
+|  GitHub/GitLab   |         |    Nebula.Cli      |         |  Dashboard Angular|
 |  (Webhook Push)  |         | (Comandos do Dev)  |         | (Navegador Web)   |
 +--------+---------+         +---------+----------+         +---------+---------+
          |                             |                              |
          | HTTP POST                   | REST API / gRPC              | REST / SignalR
          v                             v                              v
 +---------------------------------------------------------------------------------+
-|                                 MyCiCd.Api                                      |
+|                                 Nebula.Api                                      |
 |                             (ASP.NET Core API)                                  |
 +------------------------------------+--------------------------------------------+
                                      |
                                      | Enfileira Job (Redis / RabbitMQ / Channel)
                                      v
 +---------------------------------------------------------------------------------+
-|                              MyCiCd.Runner                                      |
+|                              Nebula.Runner                                      |
 |                       (Worker Engine em .NET Core)                              |
 +------------------------------------+--------------------------------------------+
                                      |
@@ -91,7 +91,7 @@ MyCiCdEngine/
 
 ---
 
-## 4. Exemplo de Arquivo de Configuração (`.myci.yaml`)
+## 4. Exemplo de Arquivo de Configuração (`.nebula.yaml`)
 
 ```yaml
 name: .NET Core CI Pipeline
@@ -113,6 +113,6 @@ jobs:
 
 ## 5. Roteiro Sugerido para o MVP
 
-1. **Fase 1 (CLI + Runner Básico):** Criar uma CLI local em C# que leia o arquivo `.myci.yaml`, use `Docker.DotNet` para instanciar containers e exiba o resultado no console.
+1. **Fase 1 (CLI + Runner Básico):** Criar uma CLI local em C# que leia o arquivo `.nebula.yaml`, use `Docker.DotNet` para instanciar containers e exiba o resultado no console.
 2. **Fase 2 (Control Plane API + Fila):** Criar a API ASP.NET Core e gerenciar enfileiramento de builds.
 3. **Fase 3 (SignalR + Dashboard Angular):** Desenvolver a interface Angular para acompanhamento em tempo real.
